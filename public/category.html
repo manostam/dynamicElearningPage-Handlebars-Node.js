@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Category </title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <h1 id="titlePage"></h1>
+
+    <!-- Φόρτωση της τελευταίας έκδοσης του Handlebars -->
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+
+    <!-- handlebars template script -->
+    <script id="eduMaterial-list-template" type="text/x-handlebars-template">
+        <h2> Βιβλία </h2>
+            <table>  
+                <th>Τίτλος</th>
+                <th>Συγγραφέας</th>
+                <th>Εκδότης</th>
+                <th>Χρονολογία έκδοσης</th>
+                <th>Τιμή</th>
+                <th>Περιγραφή</th>
+                <th>Εξώφυλλο</th>
+                {{#each educationalBooks}}
+                    <tr>
+                        <td> {{title}} </td>
+                        <td> {{author}} </td>
+                        <td> {{publisher}} </td>
+                        <td> {{publicationDate}} </td>
+                        <td> {{cost}} </td>
+                        <td> {{description}} </td>
+                        <td> <img src={{image}} alt="image of book" width="100%"> </td>
+                        <td> <button type="button" id={{id}} data-Type={{type}} data-Title="{{title}}" data-Cost={{cost}}> Add to cart </button> </td>
+                        <td id="cartButtonMessage{{id}}"> </td>
+                    </tr>
+                {{/each}}
+            </table>
+
+            <h2> Διαλέξεις </h2>
+            <table>
+                <th>Τίτλος</th>
+                <th>Τιμή</th>
+                <th>Περιγραφή</th>
+                <th>Thumbnail</th>
+                {{#each educationalLectures}}
+                    <tr>
+                        <td> {{title}} </td>
+                        <td> {{cost}} </td>
+                        <td> {{description}} </td>
+                        <td> <img src={{image}} alt="image of lecture" width="100%"> </td>
+                        <td> <button type="button" id={{id}} data-Type={{type}} data-Title={{title}} data-Cost={{cost}}> Add to cart </button> </td>
+                        <td id="cartButtonMessage{{id}}"> </td>
+                    </tr>
+                {{/each}}
+            </table>
+    </script>
+
+    <!-- MAIN SCRIPT about the category and about using hbs temp "eduMaterial-list-template" with data from the fetcher -->
+    <script>
+        // getting the category ID
+        console.log(location.search);   // use of Location API
+        let params = new URLSearchParams(document.location.search); // use of URLSearchParams API
+        let categoryID = params.get("id");
+        let categoryTitle = params.get("title");
+        console.log(categoryID + " " + categoryTitle);
+
+        // putting up the category title
+        let titleholder = document.querySelector("#titlePage");
+        titleholder.innerHTML = categoryTitle;
+
+        // Get template element from the handlebars template script
+        let eduMaterialTemplateElement = document.getElementById("eduMaterial-list-template");
+        // compile the (string of the) template -> δημιουργία συνάρτησης παραγωγής περιεχομένου - συνάρτηση υποδείγματος
+        // η μέθοδος compile επιστρέφει συνάρτηση η οποία λαμβάνει ως παράμετρο ένα αντικείμενο και επιστρέφει δυναμικό περιεχόμενο
+        let compiledEduMaterialTemplateFunc = Handlebars.compile(eduMaterialTemplateElement.textContent);
+
+        // wait for eduMaterial data to get fetched
+        window.addEventListener('eduMaterialFetched', function (event) {
+            // detail contains the data as an array
+            let eduMaterialArray = event.detail;
+            console.log("Data (books and lectures) in main script that will pass to HTML:")
+            //console.log(eduMaterialArray);
+            let eduMaterialBooks = [];
+            let eduMaterialLectures = [];
+            for (let i = 0; i < eduMaterialArray.length; i++) {
+                // modifying the images link
+                eduMaterialArray[i].image = "https://learning-hub-1whk.onrender.com/" + eduMaterialArray[i].image;
+
+                // dividing books and lectures
+                if (eduMaterialArray[i].type === 'Book') {
+                    eduMaterialBooks.push(eduMaterialArray[i]);
+                }
+                else {
+                    eduMaterialLectures.push(eduMaterialArray[i]);
+                }
+            }
+            console.log(eduMaterialBooks);
+            console.log(eduMaterialLectures);
+            // combining template (templated function that gets ONLY ONE parameter) with the (fetched) data, value is the current JS object, name is how the Handlebars script will know about it
+            let eduMaterialContent = compiledEduMaterialTemplateFunc({ educationalBooks: eduMaterialBooks, educationalLectures: eduMaterialLectures });
+            let placeholder = document.querySelector("#educational-material-display");
+            placeholder.innerHTML = eduMaterialContent;
+
+            // create one more event to notify the script handling the CART ITEM SERVICE that the display of the educational material is loaded so it can start listening to clicks on the (Add to cart) buttons
+            const eventEduMaterialLoaded = new CustomEvent('eduMaterialLoaded', { detail: eduMaterialArray });
+            window.dispatchEvent(eventEduMaterialLoaded); // Dispatch the event to notify the CART ITEM SERVICE script
+        })
+    </script>
+
+    <!-- eduMaterial category fetcher -->
+    <script>
+
+        // URL of the JSON data for the subcategories
+        let categoryLink = "https://learning-hub-1whk.onrender.com/learning-items?category=" + categoryID;
+        let eduMaterialsList = [];
+
+        // Use fetch to get the JSON data
+        fetch(categoryLink)
+            .then(response => {
+                // Check if the response is OK (status 200-299)
+                if (!response.ok) {
+                    throw new Error("Network response was not ok");
+                }
+                // Parse the response as JSON - 
+                return response.json();
+            })
+            .then(data => {
+                // Handle the data (the JSON) here - an array here               
+                eduMaterialsList = data;
+                console.log("Data just fetched:")
+                console.log(eduMaterialsList);
+
+                // Trigger a custom event to notify that data is available, 
+                // create an event-dependent value associated with the event (detail) which is then available to the handler using the CustomEvent.detail property. It defaults to null.
+                const eventEduMaterialFetched = new CustomEvent('eduMaterialFetched', { detail: eduMaterialsList });
+                window.dispatchEvent(eventEduMaterialFetched); // Dispatch the event to notify the MAIN SCRIPT
+            })
+            .catch(error => {
+                // Handle any errors that occur during the fetch
+                console.error('There was a problem with the fetch operation of subcategories:', error);
+            });
+    </script>
+</head>
+
+<body>
+    <div> <!-- LOGIN FORM -->
+        <!-- χρήση της μεθόδου post καθώς θέλουμε να κάνουμε ταυτοποίηση ενός χρήστη -->
+        <!-- The action attribute specifies where to send the form-data when a form is submitted. -->
+        <!--    <form name="loginForm" method="post" action="http://localhost:5500/index.js" enctype="application/x-www-form-urlencoded">   -->
+        <form id="loginForm">
+            <fieldset>
+                <legend> Στοιχεία ταυτοποίησης </legend>
+                <p>
+                    <label for="theUsername"> Όνομα χρήστη </label>
+                    <input type="text" id="theUsername" name="theUsername" placeholder="Γεώργιος Παπαγεωργίου" value=""
+                        required>
+                    <label for="thePassword"> Κωδικός χρήστη </label>
+                    <input type="password" id="thePassword" name="thePassword" value="" required>
+                </p>
+                <div id="loginResult"></div>
+            </fieldset>
+            <div id="buttons">
+                <!--    <input type="submit" id="btn_submit" value="Υποβολή φόρμας">    -->
+                <button type="submit">Σύνδεση χρήστη</button>
+                <input type="reset" id="btn_reset" value="Εκκαθάριση στοιχείων και επανασυμπλήρωση">
+            </div>
+        </form>
+    </div>
+
+    <!-- script handling the LOGIN SERVICE -->
+    <script>
+        let username = document.getElementById('theUsername');
+        let password = document.getElementById('thePassword');
+        let form = document.getElementById('loginForm');
+        let loginResult = document.getElementById('loginResult');
+        var currentSessionUsername = null;
+        var currentSessionId = null;
+        var userIsAuthenticated = false;
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent the default form submission
+            // Send the username and password to the server
+            try {
+                const response = await fetch('http://localhost:5500/login', {    // await pauses the execution of the code until the fetch promise resolves.
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reqUsername: username.value,
+                        reqPassword: password.value
+                    })
+                });
+                // Parse the JSON response
+                const data = await response.json();
+                // Display the result in the loginResult div
+                if (data.success) {
+                    // keep the current's session id and username at the Client and do not let them get changed again unless the page is refreshed
+                    if (userIsAuthenticated === false) {
+                        currentSessionUsername = username.value;
+                        currentSessionId = data.sessionId;
+                        userIsAuthenticated = true;
+                    }
+                    console.log("Current's session id and username: " + currentSessionId + currentSessionUsername);
+                    loginResult.innerHTML = `<p style="color: green;">${data.message} - UUID: ${data.sessionId}</p>`;
+                } else {
+                    userIsAuthenticated = false;
+                    loginResult.innerHTML = `<p style="color: red;">${data.message}</p>`;
+                }
+            } catch (error) {
+                // Handle any errors that occur during the fetch
+                console.error('Error during login:', error);
+                loginResult.innerHTML = `<p style="color: red;">An error occurred. Please try again later.</p>`;
+            }
+        })
+    </script>
+
+    <!-- script handling the CART ITEM SERVICE -->
+    <script>
+
+        // ensure that the display of educational material has been loaded
+        window.addEventListener('eduMaterialLoaded', function (event) {
+
+            // then use a container for the clicks and event delegation to handle clicks on buttons within the container
+            let areaOfEduMaterial = document.getElementById('educational-material-display');
+
+            areaOfEduMaterial.addEventListener('click', function (event) {
+                let cartButtonMes = document.getElementById(`cartButtonMessage${event.target.id}`);
+                // check if the user has logged in
+                if (userIsAuthenticated === false) {
+                    // display error at the button clicking
+                    cartButtonMes.innerHTML = "Παρακαλώ συνδεθείτε για αγορά εκπαιδευτικού υλικού";
+                }
+                else {
+
+                    // Check if the clicked element is a button
+                    if (event.target.tagName === 'BUTTON') {
+                        // Log the button's ID and stuff (assumed to be the book/lecture ID)
+                        console.log(`Clicked item ID-Type-Title-Cost: ${event.target.id}` + ` ${event.target.getAttribute('data-Type')}` + ` ${event.target.getAttribute('data-Title')}` + ` ${event.target.getAttribute('data-Cost')}`);
+
+                        // #TODO checking if the user has already added the item
+
+
+                        fetch('http://localhost:5500/cartItemAdd', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                reqId: event.target.id,
+                                reqType: event.target.getAttribute('data-Type'),
+                                reqTitle: event.target.getAttribute('data-Title'),
+                                reqCost: event.target.getAttribute('data-Cost'),
+                                reqSessionUsername: currentSessionUsername,
+                                reqSessionId: currentSessionId
+                            })
+                        })
+                            .then(response => {
+                                // Check if the response is OK (status 200-299) - okay handled at the next .then
+/*                              if (!response.ok) {
+                                    throw new Error("Network response was not ok");
+                                }
+*/                              
+                                // Parse the response as JSON
+                                return response.json();
+                            })
+                            .then(data => {
+                                // Handle the data (the JSON) here - an array here               
+                                // show the appropriate message near the "Add to cart" button
+                                if (data.success) {
+                                    console.log(data);
+                                }
+                                cartButtonMes.innerHTML = data.message;
+                            })
+                            .catch(error => {
+                                // Handle any errors that occur during the fetch
+                                console.error('Problem with fetch - put:', error);
+                            });
+
+                    }
+
+                }
+            })
+
+        })
+
+    </script>
+
+
+    <main>
+        <div id="educational-material-display"></div>
+    </main>
+</body>
+
+</html>

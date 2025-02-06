@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Index </title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Φόρτωση της τελευταίας έκδοσης του Handlebars -->
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+
+    <!-- handlebars template script -->
+    <script id="categories-list-template" type="text/x-handlebars-template">
+        <h2> {{categoriesList.length}} κατηγορίες εκπαιδευτικού υλικου και αντίστοιχες υποκατηγορίες τους.</h2>
+        
+        <table>
+            <!-- Το @key αναφέρεται στο όνομα της εκάστοτε ιδιότητας  -->
+    <!--    {{#each categoriesList.[0]}}
+                <th>{{@key}}</th>
+			{{/each}}
+    -->     
+            {{#if showSomething}}
+                I should not be shown, unless showSomething got true		        
+            {{/if}}
+         
+            {{#each theHeaders}}
+                <th>{{this}}</th>
+            {{/each}}
+
+            {{#each categoriesList}}
+                <tr>
+                    <td>{{id}}</td>
+                    <td>{{title}}</td>
+                <!--<td>{{img_url}}</td>-->
+                    <td> <a href="category.html?id={{id}}&title={{title}}"> <img src={{img_url}} alt="image of category" width="50%"> </a> </td>
+                    <td>
+                        <ul>
+                            {{#each subcategories}}
+                                <li> <a href="subcategory.html?id={{id}}&title={{title}}"> {{title}} </a> </li>
+                            {{/each}}
+                            
+                        </ul>
+                    </td>
+                </tr>
+            {{/each}}
+        </table>
+    </script>
+
+    <!-- Caution, script elements should not be self-closed, just empty -->
+    <!--
+    <script src="data.js"></script> 
+    -->
+    <script src="categories-hbs.js"></script>
+    <script src="fetchCategories.js"></script>
+    <script src="fetchSubCategories.js"></script>
+
+</head>
+
+<body>
+    <header>
+        <h1> Magic Learning </h1>
+    </header>
+
+    <main>
+        <div id="categories-display"></div>
+    </main>
+
+</body>
+
+</html>

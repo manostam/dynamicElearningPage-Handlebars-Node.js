@@ -1,0 +1,166 @@
+<!-- current html is a copy of category.html with the additive processing of the object features, check its handling in hbs and main script -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Subcategory </title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <h1 id="titlePage"></h1>
+
+    <!-- Φόρτωση της τελευταίας έκδοσης του Handlebars -->
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+
+    <!-- handlebars template script -->
+    <script id="eduMaterial-list-template" type="text/x-handlebars-template">
+        <h2> Βιβλία </h2>
+        <table>  
+            <th>Τίτλος</th>
+            <th>Συγγραφέας</th>
+            <th>Χαρακτηριστικά</th>
+            <th>Εκδότης</th>
+            <th>Χρονολογία έκδοσης</th>
+            <th>Τιμή</th>
+            <th>Περιγραφή</th>
+            <th>Εξώφυλλο</th>
+            {{#each educationalBooks}}
+                <tr>
+                    <td> {{title}} </td>
+                    <td> {{author}} </td>    
+                    <td>  
+                        {{#each featuresArray}}
+                            {{this}} <br>
+                        {{/each}}
+                    </td>
+                    <td> {{publisher}} </td>
+                    <td> {{publicationDate}} </td>
+                    <td> {{cost}} </td>
+                    <td> {{description}} </td>
+                    <td> <img src={{image}} alt="image of book" width="100%"> </td>
+                </tr>
+            {{/each}}
+        </table>
+        
+        <h2> Διαλέξεις </h2>
+        <table>
+            <th>Τίτλος</th>
+            <th>Τιμή</th>
+            <th>Χαρακτηριστικά</th>
+            <th>Περιγραφή</th>
+            <th>Thumbnail</th>
+            {{#each educationalLectures}}
+                <tr>
+                    <td> {{title}} </td>
+                    <td> {{cost}} </td>
+                    <td>  
+                        {{#each featuresArray}}
+                            {{this}} <br>
+                        {{/each}}
+                    </td>
+                    <td> {{description}} </td>
+                    <td> <img src={{image}} alt="image of lecture" width="100%"> </td>
+                </tr>
+            {{/each}}
+        </table>
+    </script>
+
+
+
+    <!-- MAIN SCRIPT about the category and about using hbs temp "eduMaterial-list-template" with data from the fetcher -->
+    <script>
+        // getting the category ID
+        console.log(location.search);   // use of Location API
+        let params = new URLSearchParams(document.location.search); // use of URLSearchParams API
+        let categoryID = params.get("id");
+        let categoryTitle = params.get("title");
+        console.log(categoryID + " " + categoryTitle);
+
+        // putting up the category title
+        let titleholder = document.querySelector("#titlePage");
+        titleholder.innerHTML = categoryTitle;
+
+        // Get template element from the handlebars template script
+        let eduMaterialTemplateElement = document.getElementById("eduMaterial-list-template");
+        // compile the (string of the) template -> δημιουργία συνάρτησης παραγωγής περιεχομένου - συνάρτηση υποδείγματος
+        // η μέθοδος compile επιστρέφει συνάρτηση η οποία λαμβάνει ως παράμετρο ένα αντικείμενο και επιστρέφει δυναμικό περιεχόμενο
+        let compiledEduMaterialTemplateFunc = Handlebars.compile(eduMaterialTemplateElement.textContent);
+
+        // wait for eduMaterial data to get fetched
+        window.addEventListener('eduMaterialFetched', function (event) {
+            // detail contains the data as an array
+            let eduMaterialArray = event.detail;
+            console.log("Data (books and lectures) in main script that will pass to HTML:")
+            //console.log(eduMaterialArray);
+            let eduMaterialBooks = [];
+            let eduMaterialLectures = [];
+            
+            for (let i = 0; i < eduMaterialArray.length; i++) {
+                // modifying the images link
+                eduMaterialArray[i].image = "https://learning-hub-1whk.onrender.com/" + eduMaterialArray[i].image;
+                
+                // separating the features
+                eduMaterialArray[i].featuresArray = eduMaterialArray[i].features.split(";");
+                console.log(eduMaterialArray[i].featuresArray);
+
+                // dividing books and lectures
+                if (eduMaterialArray[i].type === 'Book') {
+                    eduMaterialBooks.push(eduMaterialArray[i]);
+                }
+                else {
+                    eduMaterialLectures.push(eduMaterialArray[i]);
+                }
+            }
+            console.log(eduMaterialBooks);
+            console.log(eduMaterialLectures);
+            // combining template (templated function that gets ONLY ONE parameter) with the (fetched) data, value is the current JS object, name is how the Handlebars script will know about it
+            let eduMaterialContent = compiledEduMaterialTemplateFunc({ educationalBooks: eduMaterialBooks, educationalLectures: eduMaterialLectures});
+            let placeholder = document.querySelector("#educational-material-display");
+            placeholder.innerHTML = eduMaterialContent;
+        })
+    </script>
+
+    <!-- eduMaterial category fetcher -->
+    <script>
+
+        // URL of the JSON data for the subcategories
+        let categoryLink = "https://learning-hub-1whk.onrender.com/learning-items?category=" + categoryID;
+        let eduMaterialsList = [];
+
+        // Use fetch to get the JSON data
+        fetch(categoryLink)
+            .then(response => {
+                // Check if the response is OK (status 200-299)
+                if (!response.ok) {
+                    throw new Error("Network response was not ok");
+                }
+                // Parse the response as JSON - 
+                return response.json();
+            })
+            .then(data => {
+                // Handle the data (the JSON) here - an array here               
+                eduMaterialsList = data;
+                console.log("Data just fetched:")
+                console.log(eduMaterialsList);
+
+                // Trigger a custom event to notify that data is available, 
+                // create an event-dependent value associated with the event (detail) which is then available to the handler using the CustomEvent.detail property. It defaults to null.
+                const eventEduMaterialFetched = new CustomEvent('eduMaterialFetched', { detail: eduMaterialsList });
+                window.dispatchEvent(eventEduMaterialFetched); // Dispatch the event to notify subcategories-hbs.js
+            })
+            .catch(error => {
+                // Handle any errors that occur during the fetch
+                console.error('There was a problem with the fetch operation of subcategories:', error);
+            });
+    </script>
+</head>
+
+<body>
+    
+    <div id="educational-material-display"></div>
+</body>
+
+</html>

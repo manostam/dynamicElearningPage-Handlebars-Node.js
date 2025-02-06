@@ -1,0 +1,35 @@
+
+body *{
+/* helpful to see the borders of the various elements, comment/uncomment the following to use */    
+
+/*    border: 1pt dashed darkred;
+*/
+   text-align: center;
+
+}    
+
+ h1 {
+    font-size: xx-large;
+    text-align: center;
+    color: darkgreen;
+    border: 1pt ridge green;
+    border-radius: 25px;
+    background: #43df64;
+ }
+
+ h2 {
+    font-size: x-large;
+    text-align: center;
+    color: darkgreen;
+    border: 1pt ridge green;
+    border-radius: 25px;
+    background: #4ae06a;
+ }
+
+ table {
+   border: 2pt ridge blue;
+   border-radius: 25px;
+ }
+
+
+
